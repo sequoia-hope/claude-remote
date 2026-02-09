@@ -1,0 +1,27 @@
+services:
+  claude-remote:
+    build: .
+    container_name: claude-remote
+    restart: unless-stopped
+    entrypoint: /home/claude/entrypoint.sh
+    ports:
+      # Bind to Tailscale IP only — not 0.0.0.0
+      # Set TAILSCALE_IP in .env or environment
+      - "${TAILSCALE_IP:?Set TAILSCALE_IP in .env}:7681:7681"
+    volumes:
+      # Project directory (what Claude works on)
+      - ${PROJECT_DIR:-.}:/home/claude/workspace
+      # Claude auth persistence
+      - ${HOME}/.claude:/home/claude/.claude
+      # Claude config file (lives in $HOME, separate from ~/.claude/ dir)
+      - ${HOME}/.claude.json:/home/claude/.claude.json
+      # Git config (read-only)
+      - ${HOME}/.gitconfig:/home/claude/.gitconfig:ro
+      # SSH keys for git operations (read-only)
+      - ${HOME}/.ssh:/home/claude/.ssh:ro
+    environment:
+      - TTYD_USER=${TTYD_USER:-}
+      - TTYD_PASS=${TTYD_PASS:-}
+      - GH_TOKEN=${GH_TOKEN:-}
+      - WORKSPACE=/home/claude/workspace
+      - SESSION_NAME=${SESSION_NAME:-claude}

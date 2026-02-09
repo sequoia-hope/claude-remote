@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(curl:*)",
+      "Bash(TAILSCALE_IP=127.0.0.1 docker compose build:*)",
+      "Bash(TAILSCALE_IP=127.0.0.1 TTYD_USER=claude TTYD_PASS=test docker compose up:*)",
+      "Bash(TAILSCALE_IP=127.0.0.1 docker compose down:*)",
+      "Bash(TAILSCALE_IP=127.0.0.1 docker compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(python3:*)",
+      "Bash(npm root:*)",
+      "Bash(claude:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.docker.com)",
+      "Bash(gh issue view:*)",
+      "Bash(docker rm:*)"
+    ]
+  }
+}
