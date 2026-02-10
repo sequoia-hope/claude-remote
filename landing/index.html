@@ -16,7 +16,7 @@
   .subtitle { color: #888; margin-bottom: 32px; font-size: 0.95rem; }
   .cards { display: grid; grid-template-columns: 1fr; gap: 16px; width: 100%; max-width: 420px; }
   @media (min-width: 600px) { .cards { grid-template-columns: 1fr 1fr; max-width: 640px; } }
-  a.card {
+  a.card, .card {
     display: block; padding: 20px; border-radius: 12px;
     background: #1e1e1e; border: 1px solid #333;
     text-decoration: none; color: inherit;
@@ -27,6 +27,31 @@
   .card-title { font-size: 1.1rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
   .card-desc { font-size: 0.85rem; color: #999; }
   .card-port { font-size: 0.75rem; color: #666; margin-top: 8px; font-family: monospace; }
+
+  /* Actions section */
+  .actions-title { color: #888; margin-top: 36px; margin-bottom: 12px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 420px; }
+  @media (min-width: 600px) { .actions { max-width: 640px; } }
+  .action-btn {
+    flex: 1 1 auto; min-width: 140px;
+    padding: 14px 20px; border-radius: 10px;
+    background: #1a2a1a; border: 1px solid #2a4a2a;
+    color: #a0d0a0; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; text-align: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .action-btn:hover { background: #1f331f; border-color: #3a6a3a; }
+  .action-btn:active { background: #254025; }
+  .action-btn.danger { background: #2a1a1a; border: 1px solid #4a2a2a; color: #d0a0a0; }
+  .action-btn.danger:hover { background: #331f1f; border-color: #6a3a3a; }
+  .action-btn:disabled { opacity: 0.5; cursor: wait; }
+  #action-status {
+    margin-top: 12px; font-size: 0.85rem; color: #888;
+    min-height: 1.2em; text-align: center;
+    width: 100%; max-width: 420px;
+  }
+  #action-status.ok { color: #8c8; }
+  #action-status.err { color: #c88; }
 </style>
 </head>
 <body>
@@ -58,11 +83,43 @@
       <div class="card-port">github.com</div>
     </a>
   </div>
+
+  <p class="actions-title">Quick Actions</p>
+  <div class="actions">
+    <button class="action-btn" onclick="doAction('/restart-claude', this)">Restart Claude</button>
+    <button class="action-btn danger" onclick="doAction('/rebuild-claude', this)">Rebuild Claude</button>
+  </div>
+  <div id="action-status"></div>
+
   <script>
     var h = window.location.hostname;
+    var apiBase = 'http://' + h + ':8084';
     document.getElementById('link-control').href = 'http://' + h + ':8081';
     document.getElementById('link-claude').href = 'http://' + h + ':8082';
     document.getElementById('link-app').href = 'http://' + h + ':8083';
+
+    function doAction(path, btn) {
+      var status = document.getElementById('action-status');
+      var buttons = document.querySelectorAll('.action-btn');
+      buttons.forEach(function(b) { b.disabled = true; });
+      status.className = '';
+      status.textContent = 'Working...';
+
+      fetch(apiBase + path, { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          status.className = data.ok ? 'ok' : 'err';
+          status.textContent = data.ok ? 'Done.' : ('Failed: ' + data.output);
+        })
+        .catch(function(e) {
+          status.className = 'err';
+          status.textContent = 'Error: ' + e.message;
+        })
+        .finally(function() {
+          buttons.forEach(function(b) { b.disabled = false; });
+          setTimeout(function() { status.textContent = ''; status.className = ''; }, 8000);
+        });
+    }
   </script>
 </body>
 </html>
