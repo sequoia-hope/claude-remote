@@ -1,0 +1,227 @@
+<!-- ttyd keyboard bar — injected before </body> -->
+<style>
+#kb-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+  display: flex; flex-wrap: nowrap; overflow-x: auto;
+  background: #1a1a1a; border-top: 1px solid #444;
+  padding: 4px 2px; gap: 3px;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
+  scrollbar-width: none;
+}
+#kb-bar::-webkit-scrollbar { display: none; }
+#kb-bar button {
+  flex: 0 0 auto;
+  min-width: 44px; min-height: 40px;
+  padding: 6px 10px;
+  font: bold 14px/1 -apple-system, system-ui, sans-serif;
+  color: #e0e0e0; background: #333; border: 1px solid #555;
+  border-radius: 5px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+#kb-bar button:active { background: #555; }
+#kb-bar button.mod { color: #ffb74d; }
+#kb-bar button.mod.active { background: #5d4037; border-color: #ff9800; color: #ffcc80; }
+#kb-bar button.sep { width: 1px; min-width: 1px; padding: 0; background: #444; border: none; cursor: default; }
+#kb-bar .toggle-btn {
+  position: fixed; bottom: max(52px, calc(48px + env(safe-area-inset-bottom)));
+  right: 6px; z-index: 10000;
+  width: 32px; height: 32px; padding: 0;
+  font-size: 16px; line-height: 32px; text-align: center;
+  color: #aaa; background: #222; border: 1px solid #444;
+  border-radius: 50%; cursor: pointer;
+  opacity: 0.6;
+}
+#kb-bar .toggle-btn:hover { opacity: 1; }
+#kb-bar.hidden { transform: translateY(100%); }
+#kb-bar.hidden .toggle-btn { bottom: 6px; }
+/* Push terminal up to avoid overlap */
+body.kb-active .terminal { padding-bottom: 50px !important; }
+</style>
+
+<div id="kb-bar">
+  <button class="toggle-btn" id="kb-toggle" title="Toggle keyboard bar">&#x2328;</button>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ---- WebSocket interception ----
+  const _WS = window.WebSocket;
+  let _sock = null;
+
+  window.WebSocket = function(url, protocols) {
+    const ws = protocols ? new _WS(url, protocols) : new _WS(url);
+    if (!_sock) _sock = ws;
+    return ws;
+  };
+  window.WebSocket.prototype = _WS.prototype;
+  for (const k of ['CONNECTING','OPEN','CLOSING','CLOSED'])
+    window.WebSocket[k] = _WS[k];
+
+  function sendInput(data) {
+    if (!_sock || _sock.readyState !== 1) return;
+    const msg = new Uint8Array(data.length + 1);
+    msg[0] = 0; // ttyd INPUT type
+    for (let i = 0; i < data.length; i++) msg[i+1] = data.charCodeAt(i);
+    _sock.send(msg);
+  }
+
+  // ---- Keyboard bar buttons ----
+  const keys = [
+    // Essential keys missing on iOS
+    { label: 'Esc',  data: '\x1b' },
+    { label: 'Tab',  data: '\t' },
+    { sep: true },
+    // Arrow keys
+    { label: '\u2190', data: '\x1b[D', title: 'Left' },
+    { label: '\u2193', data: '\x1b[B', title: 'Down' },
+    { label: '\u2191', data: '\x1b[A', title: 'Up' },
+    { label: '\u2192', data: '\x1b[C', title: 'Right' },
+    { sep: true },
+    // Ctrl combos (most needed)
+    { label: '^C', data: '\x03', title: 'Ctrl-C (interrupt)' },
+    { label: '^Z', data: '\x1a', title: 'Ctrl-Z (suspend)' },
+    { label: '^D', data: '\x04', title: 'Ctrl-D (EOF)' },
+    { label: '^L', data: '\x0c', title: 'Ctrl-L (clear)' },
+    { label: '^A', data: '\x01', title: 'Ctrl-A (tmux prefix)' },
+    { label: '^R', data: '\x12', title: 'Ctrl-R (reverse search)' },
+    { sep: true },
+    // Ctrl modifier toggle
+    { label: 'Ctrl', mod: 'ctrl', cls: 'mod' },
+    { sep: true },
+    // Characters hard to type on iOS
+    { label: '~',  data: '~' },
+    { label: '`',  data: '`' },
+    { label: '|',  data: '|' },
+    { label: '\\', data: '\\' },
+    { label: '/',  data: '/' },
+    { label: '-',  data: '-' },
+    { label: '_',  data: '_' },
+    { sep: true },
+    // Page navigation
+    { label: 'PgUp', data: '\x1b[5~' },
+    { label: 'PgDn', data: '\x1b[6~' },
+    { label: 'Home', data: '\x1b[H' },
+    { label: 'End',  data: '\x1b[F' },
+  ];
+
+  // Modifier state
+  let ctrlActive = false;
+
+  function refocus() {
+    const ta = document.querySelector('.xterm-helper-textarea');
+    if (ta) ta.focus();
+  }
+
+  function handleKey(btn) {
+    if (btn.mod === 'ctrl') {
+      ctrlActive = !ctrlActive;
+      renderModState();
+      return;
+    }
+
+    let data = btn.data;
+
+    // Apply Ctrl modifier to single printable chars
+    if (ctrlActive && data.length === 1) {
+      const code = data.toUpperCase().charCodeAt(0);
+      if (code >= 65 && code <= 90) { // A-Z
+        data = String.fromCharCode(code - 64);
+      }
+      ctrlActive = false;
+      renderModState();
+    } else if (ctrlActive) {
+      ctrlActive = false;
+      renderModState();
+    }
+
+    sendInput(data);
+    refocus();
+  }
+
+  // Also intercept real keyboard when Ctrl modifier is active
+  document.addEventListener('keydown', function(e) {
+    if (!ctrlActive) return;
+    if (e.key === 'Control' || e.key === 'Alt' || e.key === 'Shift' || e.key === 'Meta') return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    let ch = e.key;
+    if (ch.length === 1) {
+      const code = ch.toUpperCase().charCodeAt(0);
+      if (code >= 65 && code <= 90) {
+        sendInput(String.fromCharCode(code - 64));
+      } else {
+        sendInput(ch);
+      }
+    }
+    ctrlActive = false;
+    renderModState();
+    refocus();
+  }, true);
+
+  function renderModState() {
+    const bar = document.getElementById('kb-bar');
+    if (!bar) return;
+    bar.querySelectorAll('button.mod').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.mod === 'ctrl' && ctrlActive);
+    });
+  }
+
+  // ---- Build the bar ----
+  function buildBar() {
+    const bar = document.getElementById('kb-bar');
+    if (!bar) return;
+
+    keys.forEach(function(k) {
+      if (k.sep) {
+        const s = document.createElement('button');
+        s.className = 'sep';
+        s.disabled = true;
+        bar.appendChild(s);
+        return;
+      }
+      const b = document.createElement('button');
+      b.textContent = k.label;
+      if (k.title) b.title = k.title;
+      if (k.cls) b.className = k.cls;
+      if (k.mod) b.dataset.mod = k.mod;
+
+      // Use touchend on mobile to avoid 300ms delay, mousedown on desktop
+      b.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        handleKey(k);
+      });
+      b.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        handleKey(k);
+      });
+
+      bar.appendChild(b);
+    });
+
+    // Toggle visibility
+    const toggle = document.getElementById('kb-toggle');
+    toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      bar.classList.toggle('hidden');
+      document.body.classList.toggle('kb-active', !bar.classList.contains('hidden'));
+    });
+
+    document.body.classList.add('kb-active');
+  }
+
+  // Wait for DOM and xterm to initialize
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(buildBar, 500); });
+  } else {
+    setTimeout(buildBar, 500);
+  }
+})();
+</script>
