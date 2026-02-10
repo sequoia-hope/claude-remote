@@ -50,25 +50,14 @@ body.kb-active .terminal { padding-bottom: 50px !important; }
 (function() {
   'use strict';
 
-  // ---- WebSocket interception ----
-  const _WS = window.WebSocket;
-  let _sock = null;
-
-  window.WebSocket = function(url, protocols) {
-    const ws = protocols ? new _WS(url, protocols) : new _WS(url);
-    if (!_sock) _sock = ws;
-    return ws;
-  };
-  window.WebSocket.prototype = _WS.prototype;
-  for (const k of ['CONNECTING','OPEN','CLOSING','CLOSED'])
-    window.WebSocket[k] = _WS[k];
-
+  // ---- Send input via WebSocket (set by ws-proxy.html) ----
   function sendInput(data) {
-    if (!_sock || _sock.readyState !== 1) return;
+    var sock = window.__ttyd_sock;
+    if (!sock || sock.readyState !== 1) return;
     const msg = new Uint8Array(data.length + 1);
     msg[0] = 0; // ttyd INPUT type
     for (let i = 0; i < data.length; i++) msg[i+1] = data.charCodeAt(i);
-    _sock.send(msg);
+    sock.send(msg);
   }
 
   // ---- Keyboard bar buttons ----

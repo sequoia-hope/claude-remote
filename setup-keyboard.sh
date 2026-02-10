@@ -1,13 +1,18 @@
 #!/bin/bash
-# Extracts ttyd's default HTML and injects the keyboard bar.
+# Extracts ttyd's default HTML and injects:
+#   1. ws-proxy.html   — right after <head> (WebSocket interception, before ttyd scripts)
+#   2. keyboard-bar.html — before </body> (UI bar that uses the intercepted socket)
 # Called once at first boot; cached for subsequent starts.
 set -e
 
 CACHED_HTML="/home/claude/.ttyd-keyboard.html"
 KEYBOARD_SNIPPET="${KEYBOARD_SNIPPET:-/home/claude/keyboard-bar.html}"
+WS_PROXY_SNIPPET="${WS_PROXY_SNIPPET:-/home/claude/ws-proxy.html}"
 
-# Skip if already built and keyboard snippet hasn't changed
-if [ -f "$CACHED_HTML" ] && [ "$CACHED_HTML" -nt "$KEYBOARD_SNIPPET" ]; then
+# Skip if already built and neither snippet has changed
+if [ -f "$CACHED_HTML" ] \
+   && [ "$CACHED_HTML" -nt "$KEYBOARD_SNIPPET" ] \
+   && [ "$CACHED_HTML" -nt "$WS_PROXY_SNIPPET" ]; then
     echo "[keyboard] Using cached ttyd+keyboard HTML"
     exit 0
 fi
@@ -43,21 +48,28 @@ if ! grep -q '<!DOCTYPE html>' /tmp/ttyd-original.html; then
     exit 0
 fi
 
-# Inject keyboard bar snippet before </body> using python3
-# (sed can't handle the 700KB single-line ttyd HTML reliably)
-python3 - "$KEYBOARD_SNIPPET" /tmp/ttyd-original.html "$CACHED_HTML" << 'PYEOF'
+# Two-phase injection using python3:
+# 1. ws-proxy.html after <head> (so it runs before ttyd's bundled JS)
+# 2. keyboard-bar.html before </body> (UI that reads window.__ttyd_sock)
+python3 - "$WS_PROXY_SNIPPET" "$KEYBOARD_SNIPPET" /tmp/ttyd-original.html "$CACHED_HTML" << 'PYEOF'
 import sys
 
-snippet_path, original_path, output_path = sys.argv[1], sys.argv[2], sys.argv[3]
+ws_proxy_path, kb_path, original_path, output_path = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 with open(original_path, 'r') as f:
     html = f.read()
-with open(snippet_path, 'r') as f:
-    snippet = f.read()
+with open(ws_proxy_path, 'r') as f:
+    ws_proxy = f.read()
+with open(kb_path, 'r') as f:
+    keyboard = f.read()
 
-html = html.replace('</body>', snippet + '\n</body>', 1)
+# Phase 1: inject ws-proxy right after <head>
+html = html.replace('<head>', '<head>\n' + ws_proxy, 1)
+
+# Phase 2: inject keyboard bar before </body>
+html = html.replace('</body>', keyboard + '\n</body>', 1)
 
 with open(output_path, 'w') as f:
     f.write(html)
-print('[keyboard] Custom ttyd index built successfully')
+print('[keyboard] Custom ttyd index built successfully (ws-proxy + keyboard bar)')
 PYEOF

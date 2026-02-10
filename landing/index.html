@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waffle Iron Dev</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, system-ui, 'Segoe UI', sans-serif;
+    background: #111; color: #e0e0e0;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 8px; color: #fff; }
+  .subtitle { color: #888; margin-bottom: 32px; font-size: 0.95rem; }
+  .cards { display: grid; grid-template-columns: 1fr; gap: 16px; width: 100%; max-width: 420px; }
+  @media (min-width: 600px) { .cards { grid-template-columns: 1fr 1fr; max-width: 640px; } }
+  a.card {
+    display: block; padding: 20px; border-radius: 12px;
+    background: #1e1e1e; border: 1px solid #333;
+    text-decoration: none; color: inherit;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  a.card:hover, a.card:active { background: #252525; border-color: #555; }
+  .card-icon { font-size: 1.6rem; margin-bottom: 8px; }
+  .card-title { font-size: 1.1rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .card-desc { font-size: 0.85rem; color: #999; }
+  .card-port { font-size: 0.75rem; color: #666; margin-top: 8px; font-family: monospace; }
+</style>
+</head>
+<body>
+  <h1>Waffle Iron</h1>
+  <p class="subtitle">Development Environment</p>
+  <div class="cards">
+    <a class="card" id="link-control">
+      <div class="card-icon">&#x1F6E0;</div>
+      <div class="card-title">Control Terminal</div>
+      <div class="card-desc">Host bash &mdash; restart Docker, check logs, recover from broken state.</div>
+      <div class="card-port">:8081</div>
+    </a>
+    <a class="card" id="link-claude">
+      <div class="card-icon">&#x1F916;</div>
+      <div class="card-title">Claude Code</div>
+      <div class="card-desc">AI coding assistant in Docker with tmux session.</div>
+      <div class="card-port">:8082</div>
+    </a>
+    <a class="card" id="link-app">
+      <div class="card-icon">&#x1F4D0;</div>
+      <div class="card-title">Waffle Iron App</div>
+      <div class="card-desc">SvelteKit + three.js parametric CAD frontend (Vite dev server).</div>
+      <div class="card-port">:8083</div>
+    </a>
+    <a class="card" href="https://github.com/sequoia-hq/waffle-iron" target="_blank">
+      <div class="card-icon">&#x1F4E6;</div>
+      <div class="card-title">GitHub Repo</div>
+      <div class="card-desc">Source code, issues, pull requests.</div>
+      <div class="card-port">github.com</div>
+    </a>
+  </div>
+  <script>
+    var h = window.location.hostname;
+    document.getElementById('link-control').href = 'http://' + h + ':8081';
+    document.getElementById('link-claude').href = 'http://' + h + ':8082';
+    document.getElementById('link-app').href = 'http://' + h + ':8083';
+  </script>
+</body>
+</html>

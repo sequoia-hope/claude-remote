@@ -1,0 +1,15 @@
+<!-- WebSocket proxy — injected after <head>, BEFORE ttyd's scripts -->
+<script>
+(function() {
+  'use strict';
+  var _WS = window.WebSocket;
+  window.WebSocket = function(url, protocols) {
+    var ws = protocols ? new _WS(url, protocols) : new _WS(url);
+    if (!window.__ttyd_sock) window.__ttyd_sock = ws;
+    return ws;
+  };
+  window.WebSocket.prototype = _WS.prototype;
+  for (var i = 0, k = ['CONNECTING','OPEN','CLOSING','CLOSED']; i < k.length; i++)
+    window.WebSocket[k[i]] = _WS[k[i]];
+})();
+</script>
