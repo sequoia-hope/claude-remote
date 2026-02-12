@@ -76,6 +76,12 @@
       <div class="card-desc">SvelteKit + three.js parametric CAD frontend (Vite dev server).</div>
       <div class="card-port">:8083</div>
     </a>
+    <a class="card" id="link-devlog">
+      <div class="card-icon">&#x1F4DD;</div>
+      <div class="card-title">Dev Log</div>
+      <div class="card-desc">Development log &mdash; notes, progress, and session history.</div>
+      <div class="card-port">:8085</div>
+    </a>
     <a class="card" href="https://github.com/sequoia-hq/waffle-iron" target="_blank">
       <div class="card-icon">&#x1F4E6;</div>
       <div class="card-title">GitHub Repo</div>
@@ -97,6 +103,7 @@
     document.getElementById('link-control').href = 'http://' + h + ':8081';
     document.getElementById('link-claude').href = 'http://' + h + ':8082';
     document.getElementById('link-app').href = 'http://' + h + ':8083';
+    document.getElementById('link-devlog').href = 'http://' + h + ':8085';
 
     function doAction(path, btn) {
       var status = document.getElementById('action-status');

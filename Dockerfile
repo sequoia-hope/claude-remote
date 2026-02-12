@@ -53,4 +53,4 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 # Create workspace directory
 RUN mkdir -p /home/$USERNAME/workspace
 
-EXPOSE 7681
+EXPOSE 7681 8083
