@@ -6,6 +6,16 @@ TTYD_PORT="${TTYD_PORT:-7681}"
 WORKSPACE="${WORKSPACE:-/home/claude/workspace}"
 SESSION_NAME="${SESSION_NAME:-claude}"
 
+# Start Waffle Iron dev server as a background process (not in tmux)
+APP_DIR="$WORKSPACE/app"
+APP_LOG="/tmp/waffle-iron-app.log"
+if [ -d "$APP_DIR" ]; then
+    cd "$APP_DIR"
+    (npm install && npm run dev -- --host 0.0.0.0) > "$APP_LOG" 2>&1 &
+    echo "Waffle Iron dev server starting in background (log: $APP_LOG)"
+    cd "$WORKSPACE"
+fi
+
 # Start a tmux session with Claude Code if one doesn't exist
 if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE" \
