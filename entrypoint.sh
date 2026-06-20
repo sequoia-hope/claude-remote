@@ -22,6 +22,12 @@ if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
         "claude --dangerously-skip-permissions; exec bash"
 fi
 
+# Start a parallel tmux session running opencode (reachable via opencode.sh)
+if ! tmux has-session -t "opencode" 2>/dev/null; then
+    tmux new-session -d -s "opencode" -c "$WORKSPACE" \
+        "opencode; exec bash"
+fi
+
 # Build keyboard bar (extracts ttyd HTML + injects keyboard on first boot)
 CUSTOM_INDEX="/home/claude/.ttyd-keyboard.html"
 KEYBOARD_SETUP="/home/claude/setup-keyboard.sh"
