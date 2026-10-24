@@ -1,12 +1,11 @@
 #!/bin/bash
 # tmux copy-command: put stdin on the HOST desktop clipboard.
 #
-# The terminal attached to tmux (GNOME Terminal via shell.sh -> docker exec)
-# is VTE, which ignores OSC 52, so tmux's set-clipboard never reaches the
-# desktop. Instead pipe each copy over SSH to the host, where xclip writes
-# into the logged-in session through Mutter's Xwayland (GNOME syncs that to
-# the Wayland clipboard). Xwayland's XAUTHORITY file is renamed every login,
-# so it is read from the running terminal server's environment each time.
+# The terminal attached to tmux is usually VTE (GNOME Terminal, or the
+# overseer desktop window, via docker exec), which ignores OSC 52, so tmux's
+# set-clipboard never reaches the desktop. Instead pipe each copy over SSH to
+# the host's ~/scripts/clip-copy, which finds the logged-in desktop session
+# itself — whichever terminal is attached, or none.
 set -euo pipefail
 
 HOST_SSH_USER="${HOST_SSH_USER:-sequoia}"
@@ -21,11 +20,4 @@ fi
 
 exec ssh -T -o BatchMode=yes -o ConnectTimeout=3 \
     -o UserKnownHostsFile="$HOME/.claude/host_known_hosts" \
-    "$HOST_SSH_USER@$HOST_ADDR" '
-# Match the exact (15-char-truncated) process name: -f would also match
-# this very shell, whose command line contains the string.
-p=$(pgrep -u "$(id -u)" -n -x gnome-terminal-) \
-    || { echo "host-copy: no GNOME Terminal in a desktop session" >&2; exit 1; }
-eval "$(tr "\0" "\n" < /proc/$p/environ | grep -E "^(DISPLAY|XAUTHORITY)=" | sed "s/^/export /")"
-# xclip stays behind to own the selection; detach its stdio so ssh can exit.
-exec xclip -selection clipboard -i >/dev/null 2>&1'
+    "$HOST_SSH_USER@$HOST_ADDR" '~/scripts/clip-copy'
