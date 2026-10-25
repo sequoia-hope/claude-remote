@@ -17,13 +17,25 @@ if [ -d "$APP_DIR" ]; then
 fi
 
 # Start a tmux session with Claude Code if one doesn't exist
-if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+if ! tmux has-session -t "=$SESSION_NAME" 2>/dev/null; then
     tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE" \
         "claude --dangerously-skip-permissions; exec bash"
 fi
 
+# Start the primary Claude session ("default", used by shell.sh / launcher.py / voice_prompt)
+if ! tmux has-session -t "=default" 2>/dev/null; then
+    tmux new-session -d -s "default" -c "$WORKSPACE" \
+        "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --dangerously-skip-permissions; exec bash"
+fi
+
+# Start a parallel tmux session running Antigravity (agy)
+if [ -x /home/claude/.local/bin/agy ] && ! tmux has-session -t "=agy" 2>/dev/null; then
+    tmux new-session -d -s "agy" -c "$WORKSPACE" \
+        "agy --dangerously-skip-permissions; exec bash"
+fi
+
 # Start a parallel tmux session running opencode (reachable via opencode.sh)
-if ! tmux has-session -t "opencode" 2>/dev/null; then
+if ! tmux has-session -t "=opencode" 2>/dev/null; then
     tmux new-session -d -s "opencode" -c "$WORKSPACE" \
         "opencode; exec bash"
 fi
